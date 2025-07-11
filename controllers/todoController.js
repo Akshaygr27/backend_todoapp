@@ -18,10 +18,14 @@ exports.createTodo = async (req, res) => {
 // Get Todos with filtering and pagination
 exports.getTodos = async (req, res) => {
   try {
-    const { status = 'all', page = 1 } = req.query;
+    const { status = 'all', page = 1, search = '' } = req.query;
     const filter = { userId: req.user.id };
 
     if (status !== 'all') filter.status = status;
+
+    if (search.trim()) {
+      filter.title = { $regex: search, $options: 'i' };
+    }
 
     const limit = 5;
     const skip = (parseInt(page) - 1) * limit;
