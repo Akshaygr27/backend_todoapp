@@ -77,3 +77,26 @@ exports.deleteTodo = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete todo' });
   }
 };
+
+// Change Todo Status
+exports.changeStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'completed'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const todo = await Todo.findOne({ _id: id, userId: req.user.id });
+    if (!todo) return res.status(404).json({ error: 'Todo not found' });
+
+    todo.status = status;
+    await todo.save();
+
+    res.json({ message: 'Status updated', todo });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+};
+

@@ -9,7 +9,8 @@ const {
   createTodo,
   getTodos,
   updateTodo,
-  deleteTodo
+  deleteTodo,
+  changeStatus
 } = require('../controllers/todoController');
 
 // localhost:3000
@@ -24,6 +25,7 @@ router.post('/todo', authMiddleware,validateTodo, createTodo);
 router.get('/todo', authMiddleware, getTodos);
 router.put('/todo/:id', authMiddleware, validateTodo, updateTodo);
 router.delete('/todo/:id', authMiddleware, deleteTodo);
+router.patch('/todo/:id/status', authMiddleware, changeStatus);
 
 module.exports = router;
 
