@@ -100,3 +100,38 @@ exports.changeStatus = async (req, res) => {
   }
 };
 
+exports.exportTodos = async (req, res) => {
+  try {
+    const format = req.query.format;
+    if (!['txt', 'csv', 'sql', 'json'].includes(format)) {
+      return res.status(400).json({ error: 'Invalid export format' });
+    }
+
+    const todos = await Todo.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    let content = '';
+    const filename = `todos.${format}`;
+
+    switch (format) {
+      case 'json':
+        content = JSON.stringify(todos, null, 2);
+        break;
+      case 'txt':
+        content = todos.map(todo => `- ${todo.title} [${todo.status}]`).join('\n');
+        break;
+      case 'csv':
+        content = 'ID,Title,Status,DueDate\n';
+        content += todos.map(todo => `${todo._id},"${todo.title}",${todo.status},${todo.dueDate || ''}`).join('\n');
+        break;
+      case 'sql':
+        content = todos.map(todo => `INSERT INTO todos (id, title, status, dueDate) VALUES ('${todo._id}', '${todo.title.replace(/'/g, "''")}', '${todo.status}', '${todo.dueDate || ''}');`).join('\n');
+        break;
+    }
+
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(content);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to export todos' });
+  }
+};
+
