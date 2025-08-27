@@ -17,6 +17,13 @@ const {
   importTodos
 } = require('../controllers/todoController');
 
+
+const adminMiddleware = require('../middlewares/adminMiddleware');
+const { validateAdminLogin } = require('../middlewares/adminValidator');
+const {
+  adminLogin,
+} = require('../controllers/adminController');
+
 // localhost:3000
 router.get('/', (req, res) => {
   res.send('Welcome to the Todo API');
@@ -33,6 +40,8 @@ router.patch('/todo/:id/status', authMiddleware, changeStatus);
 router.get('/todo/export', authMiddleware, exportTodos);
 router.post('/todo/import', authMiddleware, upload.single('file'), importTodos);
 
+// Admin routes
+router.post('/admin/login', validateAdminLogin, adminLogin);
 
 module.exports = router;
 
