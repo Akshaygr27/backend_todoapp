@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { signup, login } = require('../controllers/authController');
 const { validateSignup, validateLogin } = require('../middlewares/authValidator');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 const authMiddleware = require('../middlewares/authMiddleware');
 const validateTodo = require('../middlewares/validateTodo');
@@ -11,7 +13,8 @@ const {
   updateTodo,
   deleteTodo,
   changeStatus,
-  exportTodos
+  exportTodos,
+  importTodos
 } = require('../controllers/todoController');
 
 // localhost:3000
@@ -28,6 +31,8 @@ router.put('/todo/:id', authMiddleware, validateTodo, updateTodo);
 router.delete('/todo/:id', authMiddleware, deleteTodo);
 router.patch('/todo/:id/status', authMiddleware, changeStatus);
 router.get('/todo/export', authMiddleware, exportTodos);
+router.post('/todo/import', authMiddleware, upload.single('file'), importTodos);
+
 
 module.exports = router;
 

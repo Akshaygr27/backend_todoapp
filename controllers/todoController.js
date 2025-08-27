@@ -1,4 +1,8 @@
 const Todo = require('../models/todoModel');
+const fs = require('fs');
+const path = require('path');
+const csvParser  = require('csv-parser');
+
 
 // Create Todo
 exports.createTodo = async (req, res) => {
@@ -134,4 +138,34 @@ exports.exportTodos = async (req, res) => {
     res.status(500).json({ error: 'Failed to export todos' });
   }
 };
+
+exports.importTodos = async (req, res) => {
+  const filePath = req.file.path;
+  const results = [];
+
+  fs.createReadStream(filePath)
+    .pipe(csvParser())
+    .on("data", (data) => {
+     
+      if (data.Title && data.Status && data.DueDate) {
+        results.push({
+          title: data.Title,
+          status: data.Status,
+          dueDate: new Date(data.DueDate),
+          userId: req.user.id, 
+        });
+      }
+    })
+    .on("end", async () => {
+      try {
+        await Todo.insertMany(results);
+        fs.unlinkSync(filePath); 
+        res.status(200).json({ message: "Todos imported successfully." });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to import todos." });
+      }
+    });
+};
+
 
