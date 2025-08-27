@@ -47,3 +47,55 @@ exports.adminLogin = async (req, res) => {
     res.status(500).json({ error: 'Server error during admin login' });
   }
 };
+
+
+// Admin User Report
+exports.getUserReport = async (req, res) => {
+  try {
+    const { start, end, page = 1, limit = 10 } = req.query;
+
+    let filter = {};
+
+    // Date filtering if provided
+    if (start || end) {
+      filter.createdAt = {};
+      if (start) filter.createdAt.$gte = new Date(start);
+      if (end) {
+        // include full end date
+        let endDate = new Date(end);
+        endDate.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDate;
+      }
+    }
+
+    // Pagination values
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Total count (before pagination)
+    const totalUsers = await User.countDocuments(filter);
+
+    // Paginated result
+    const users = await User.find(filter)
+      .select('username email createdAt role')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    res.json({
+      success: true,
+      totalUsers,
+      page: pageNum,
+      totalPages: Math.ceil(totalUsers / limitNum),
+      count: users.length,
+      users
+    });
+  } catch (err) {
+    console.error('Error fetching user report:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching user report'
+    });
+  }
+};

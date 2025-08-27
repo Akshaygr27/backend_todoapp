@@ -22,6 +22,7 @@ const adminMiddleware = require('../middlewares/adminMiddleware');
 const { validateAdminLogin } = require('../middlewares/adminValidator');
 const {
   adminLogin,
+  getUserReport
 } = require('../controllers/adminController');
 
 // localhost:3000
@@ -42,6 +43,7 @@ router.post('/todo/import', authMiddleware, upload.single('file'), importTodos);
 
 // Admin routes
 router.post('/admin/login', validateAdminLogin, adminLogin);
+router.get('/admin/user-report', authMiddleware, adminMiddleware, getUserReport);
 
 module.exports = router;
 
