@@ -1,6 +1,7 @@
 // controllers/adminController.js
 const User = require('../models/userModel');
 const Todo = require('../models/todoModel');
+const UserActivity = require('../models/userActivityModel');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -97,5 +98,55 @@ exports.getUserReport = async (req, res) => {
       success: false,
       message: 'Server error while fetching user report'
     });
+  }
+};
+
+exports.getUserUsageStats = async (req, res) => {
+  try {
+    const stats = await UserActivity.aggregate([
+      {
+        $group: {
+          _id: "$userId",
+          addCount: { $sum: { $cond: [{ $eq: ["$action", "add"] }, 1, 0] } },
+          deleteCount: { $sum: { $cond: [{ $eq: ["$action", "delete"] }, 1, 0] } },
+          editCount: { $sum: { $cond: [{ $eq: ["$action", "edit"] }, 1, 0] } },
+          completeCount: { $sum: { $cond: [{ $eq: ["$action", "complete"] }, 1, 0] } },
+          importCount: { $sum: { $cond: [{ $eq: ["$action", "import"] }, 1, 0] } },
+          exportCount: { $sum: { $cond: [{ $eq: ["$action", "export"] }, 1, 0] } }
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+      { $unwind: "$user" },
+      {
+        $project: {
+          _id: 0,
+          userId: "$user._id",
+          username: "$user.username",
+          email: "$user.email",
+          addCount: 1,
+          deleteCount: 1,
+          editCount: 1,
+          completeCount: 1,
+          importCount: 1,
+          exportCount: 1
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      count: stats.length,
+      stats
+    });
+  } catch (err) {
+    console.error("Error fetching user usage stats:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

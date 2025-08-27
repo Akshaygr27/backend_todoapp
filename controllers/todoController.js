@@ -1,4 +1,5 @@
 const Todo = require('../models/todoModel');
+const UserActivity = require('../models/userActivityModel');
 const fs = require('fs');
 const path = require('path');
 const csvParser  = require('csv-parser');
@@ -13,6 +14,9 @@ exports.createTodo = async (req, res) => {
       title,
       dueDate
     });
+
+    await UserActivity.create({ userId: req.user.id, action: 'add' });
+
     res.status(201).json({ message: 'Todo created', todo });
   } catch (err) {
     res.status(500).json({ error: 'Server error while creating todo.' });
@@ -61,6 +65,8 @@ exports.updateTodo = async (req, res) => {
     todo.dueDate = dueDate;
     await todo.save();
 
+    await UserActivity.create({ userId: req.user.id, action: 'edit' });
+
     res.json({ message: 'Todo updated', todo });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update todo' });
@@ -75,6 +81,8 @@ exports.deleteTodo = async (req, res) => {
     const todo = await Todo.findOneAndDelete({ _id: id, userId: req.user.id });
 
     if (!todo) return res.status(404).json({ error: 'Todo not found' });
+
+    await UserActivity.create({ userId: req.user.id, action: 'delete' });
 
     res.json({ message: 'Todo deleted' });
   } catch (err) {
@@ -97,6 +105,8 @@ exports.changeStatus = async (req, res) => {
 
     todo.status = status;
     await todo.save();
+
+    await UserActivity.create({ userId: req.user.id, action: 'complete' });
 
     res.json({ message: 'Status updated', todo });
   } catch (err) {
@@ -134,6 +144,9 @@ exports.exportTodos = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
     res.setHeader('Content-Type', 'text/plain');
     res.send(content);
+
+    await UserActivity.create({ userId: req.user.id, action: 'export' });
+
   } catch (err) {
     res.status(500).json({ error: 'Failed to export todos' });
   }
@@ -160,6 +173,9 @@ exports.importTodos = async (req, res) => {
       try {
         await Todo.insertMany(results);
         fs.unlinkSync(filePath); 
+
+        await UserActivity.create({ userId: req.user.id, action: 'import' });
+        
         res.status(200).json({ message: "Todos imported successfully." });
       } catch (err) {
         console.error(err);
