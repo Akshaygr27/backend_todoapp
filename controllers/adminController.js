@@ -103,16 +103,20 @@ exports.getUserReport = async (req, res) => {
 
 exports.getUserUsageStats = async (req, res) => {
   try {
+    const { page = 1, limit = 10 } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
     const stats = await UserActivity.aggregate([
       {
         $group: {
           _id: "$userId",
-          addCount: { $sum: { $cond: [{ $eq: ["$action", "add"] }, 1, 0] } },
-          deleteCount: { $sum: { $cond: [{ $eq: ["$action", "delete"] }, 1, 0] } },
-          editCount: { $sum: { $cond: [{ $eq: ["$action", "edit"] }, 1, 0] } },
-          completeCount: { $sum: { $cond: [{ $eq: ["$action", "complete"] }, 1, 0] } },
-          importCount: { $sum: { $cond: [{ $eq: ["$action", "import"] }, 1, 0] } },
-          exportCount: { $sum: { $cond: [{ $eq: ["$action", "export"] }, 1, 0] } }
+          addedTasks: { $sum: { $cond: [{ $eq: ["$action", "add"] }, 1, 0] } },
+          deletedTasks: { $sum: { $cond: [{ $eq: ["$action", "delete"] }, 1, 0] } },
+          completedTasks: { $sum: { $cond: [{ $eq: ["$action", "complete"] }, 1, 0] } },
+          editedTasks: { $sum: { $cond: [{ $eq: ["$action", "edit"] }, 1, 0] } },
+          imports: { $sum: { $cond: [{ $eq: ["$action", "import"] }, 1, 0] } },
+          exports: { $sum: { $cond: [{ $eq: ["$action", "export"] }, 1, 0] } },
         }
       },
       {
@@ -120,33 +124,41 @@ exports.getUserUsageStats = async (req, res) => {
           from: "users",
           localField: "_id",
           foreignField: "_id",
-          as: "user"
+          as: "userDetails"
         }
       },
-      { $unwind: "$user" },
+      { $unwind: "$userDetails" },
       {
         $project: {
           _id: 0,
-          userId: "$user._id",
-          username: "$user.username",
-          email: "$user.email",
-          addCount: 1,
-          deleteCount: 1,
-          editCount: 1,
-          completeCount: 1,
-          importCount: 1,
-          exportCount: 1
+          userId: "$userDetails._id",
+          name: "$userDetails.name",
+          email: "$userDetails.email",
+          addedTasks: 1,
+          deletedTasks: 1,
+          completedTasks: 1,
+          editedTasks: 1,
+          imports: 1,
+          exports: 1
+        }
+      },
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          data: [{ $skip: skip }, { $limit: parseInt(limit) }]
         }
       }
     ]);
 
+    const total = stats[0]?.metadata[0]?.total || 0;
+
     res.json({
-      success: true,
-      count: stats.length,
-      stats
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      users: stats[0].data
     });
   } catch (err) {
-    console.error("Error fetching user usage stats:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ error: "Failed to fetch user usage statistics" });
   }
 };
