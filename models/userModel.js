@@ -26,7 +26,8 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+  plan: { type: String, enum: ["free", "pro"], default: "free" }
 }, { timestamps: true });
 
 // userSchema.index({ email: 1 });

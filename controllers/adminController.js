@@ -103,12 +103,23 @@ exports.getUserReport = async (req, res) => {
 
 exports.getUserUsageStats = async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, startDate, endDate } = req.query;
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const match = {};
+
+    if (startDate || endDate) {
+      match.timestamp = {};
+      if (startDate) match.timestamp.$gte = new Date(`${startDate}T00:00:00`);
+      if (endDate) {
+        match.timestamp.$lte = new Date(`${endDate}T23:59:59.999`);
+      }
+    }
+
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
     const stats = await UserActivity.aggregate([
-      {
+      Object.keys(match).length ? { $match: match } : null,
+      { 
         $group: {
           _id: "$userId",
           addedTasks: { $sum: { $cond: [{ $eq: ["$action", "add"] }, 1, 0] } },
@@ -132,7 +143,7 @@ exports.getUserUsageStats = async (req, res) => {
         $project: {
           _id: 0,
           userId: "$userDetails._id",
-          name: "$userDetails.name",
+          name: "$userDetails.username",
           email: "$userDetails.email",
           addedTasks: 1,
           deletedTasks: 1,
@@ -145,18 +156,19 @@ exports.getUserUsageStats = async (req, res) => {
       {
         $facet: {
           metadata: [{ $count: "total" }],
-          data: [{ $skip: skip }, { $limit: parseInt(limit) }]
+          data: [{ $skip: skip }, { $limit: parseInt(limit, 10) }]
         }
       }
-    ]);
+    ].filter(Boolean));
 
     const total = stats[0]?.metadata[0]?.total || 0;
+    const data = stats[0]?.data || [];
 
     res.json({
       total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      users: stats[0].data
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      data
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch user usage statistics" });

@@ -14,7 +14,8 @@ const {
   deleteTodo,
   changeStatus,
   exportTodos,
-  importTodos
+  importTodos,
+  upgradeToPro
 } = require('../controllers/todoController');
 
 
@@ -41,6 +42,8 @@ router.delete('/todo/:id', authMiddleware, deleteTodo);
 router.patch('/todo/:id/status', authMiddleware, changeStatus);
 router.get('/todo/export', authMiddleware, exportTodos);
 router.post('/todo/import', authMiddleware, upload.single('file'), importTodos);
+router.post('/todo/upgrade', authMiddleware, upgradeToPro);
+
 
 // Admin routes
 router.post('/admin/login', validateAdminLogin, adminLogin);

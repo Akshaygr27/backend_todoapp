@@ -1,4 +1,5 @@
 const Todo = require('../models/todoModel');
+const User = require('../models/userModel');
 const UserActivity = require('../models/userActivityModel');
 const fs = require('fs');
 const path = require('path');
@@ -9,6 +10,39 @@ const csvParser  = require('csv-parser');
 exports.createTodo = async (req, res) => {
   try {
     const { title, dueDate } = req.body;
+    const userId = req.user.id;
+
+    // find user to check plan
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // daily limit based on subscription
+    let dailyLimit = 0;
+    if (user.plan === "free") {
+      dailyLimit = 10;
+    } else if (user.plan === "pro") {
+      dailyLimit = 50;
+    } else {
+      dailyLimit = 10; // default if plan missing
+    }
+
+    // check today's todos
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const todayCount = await Todo.countDocuments({
+      userId,
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
+    if (todayCount >= dailyLimit) {
+      return res.status(429).json({
+        error: `Daily todo limit reached (${dailyLimit} per day for ${user.plan} plan).`
+      });
+    }
+
     const todo = await Todo.create({
       userId: req.user.id,
       title,
@@ -182,6 +216,22 @@ exports.importTodos = async (req, res) => {
         res.status(500).json({ error: "Failed to import todos." });
       }
     });
+};
+
+exports.upgradeToPro = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.plan = "pro";
+    await user.save();
+
+    res.json({ message: "Upgraded to Pro successfully", plan: user.plan });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to upgrade to Pro" });
+  }
 };
 
 
